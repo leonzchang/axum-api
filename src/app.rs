@@ -3,6 +3,7 @@ use axum::{response::Json, routing::get, Router};
 use serde_json::{json, Value};
 
 pub async fn service() {
+    env_logger::init();
     // build our application with a single route
     let app = Router::new()
         .route("/healthz", get(service_info))

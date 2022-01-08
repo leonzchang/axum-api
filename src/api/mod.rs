@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 
 #[derive(Deserialize, Serialize, Debug)]
 struct UserData {
-    account: String,
+    username: String,
     password: String,
 }
 
@@ -22,27 +22,22 @@ pub fn routes() -> Router {
 }
 
 async fn create_account(payload: extract::Json<UserData>) {
+    log::info!("create account {:?}", payload);
     // `POST /` called post api for creating account
-    println!(
-        "account: {:?}, password: {:?}",
-        payload.account, payload.password
-    )
 }
 
 async fn login(payload: extract::Json<UserData>) {
+    log::warn!("create account {:?}", payload);
     // `POST /` called post api for logging in
-    println!(
-        "account: {:?}, password: {:?}",
-        payload.account, payload.password
-    )
 }
 
 async fn get_account_test() -> Json<Value> {
     // `GET /account for test
     let user_test = UserData {
-        account: "John Doe".to_owned(),
+        username: "John Doe".to_owned(),
         password: "test".to_owned(),
     };
 
+    log::error!("create account {:?}", user_test);
     Json(json!(user_test))
 }
