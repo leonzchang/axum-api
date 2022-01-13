@@ -25,7 +25,7 @@ migrate:
 
 local: local-pg migrate
 	source ${ROOT_DIR}/env/.env ; \
-	RUST_LOG=info cargo run --release --bin axum-api ; \
+	RUST_LOG=info RUST_BACKTRACE=1 cargo run --release --bin axum-api ; \
 
 local-pg:
 	source ${ROOT_DIR}/env/.env ; \

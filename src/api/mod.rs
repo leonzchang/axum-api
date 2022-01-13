@@ -1,11 +1,32 @@
+use std::ops::Deref;
+
+use crate::utils::{get_all_account, user_create_account};
 use axum::{
     extract,
-    response::Json,
+    extract::Extension,
+    http::StatusCode,
+    response,
     routing::{get, post},
     Router,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use sqlx::PgPool;
+
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+    #[error("DB error: `{0}`")]
+    Database(#[from] sqlx::Error),
+}
+
+pub fn routes() -> Router {
+    let router = Router::new()
+        .route("/create_account", post(create_account))
+        .route("/login", post(login))
+        .route("/get_accounts", get(get_accounts));
+
+    router
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 struct UserData {
@@ -13,31 +34,46 @@ struct UserData {
     password: String,
 }
 
-pub fn routes() -> Router {
-    let router = Router::new()
-        .route("/create_account", post(create_account))
-        .route("/login", post(login))
-        .route("/get_account", get(get_account_test));
-    router
+// TODO: authentication
+async fn create_account(
+    req: extract::Json<UserData>,
+    Extension(pg_pool): Extension<PgPool>,
+) -> Result<response::Json<Value>, (StatusCode, String)> {
+    let UserData { username, password } = req.deref();
+    let id = user_create_account(&pg_pool, username, password)
+        .await
+        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+
+    Ok(response::Json(json!({ "account_id": id })))
 }
 
-async fn create_account(payload: extract::Json<UserData>) {
-    log::info!("create account {:?}", payload);
-    // `POST /` called post api for creating account
-}
-
+// TODO: authentication, database function
 async fn login(payload: extract::Json<UserData>) {
     log::warn!("create account {:?}", payload);
     // `POST /` called post api for logging in
 }
 
-async fn get_account_test() -> Json<Value> {
-    // `GET /account for test
-    let user_test = UserData {
-        username: "John Doe".to_owned(),
-        password: "test".to_owned(),
-    };
+// For test
+async fn get_accounts(
+    Extension(pg_pool): Extension<PgPool>,
+) -> Result<response::Json<Value>, (StatusCode, String)> {
+    #[derive(Serialize, Debug)]
+    struct SerializeUsersData {
+        id: i32,
+        username: String,
+        password: String,
+    }
 
-    log::error!("create account {:?}", user_test);
-    Json(json!(user_test))
+    let result = get_all_account(&pg_pool)
+        .await
+        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?
+        .into_iter()
+        .map(|(id, username, password)| SerializeUsersData {
+            id,
+            username,
+            password,
+        })
+        .collect::<Vec<SerializeUsersData>>();
+    log::warn!("{:?}", result);
+    Ok(response::Json(json!(result)))
 }

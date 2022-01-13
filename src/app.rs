@@ -1,16 +1,27 @@
 use crate::api;
+use crate::utils::init_connections;
 use axum::{response::Json, routing::get, Router};
 use serde_json::{json, Value};
+use tower_http::add_extension::AddExtensionLayer;
 
-pub async fn service() {
+pub struct Config {
+    pub database_url: String,
+}
+
+pub async fn service(config: Config) {
     env_logger::init();
+
+    let Config { database_url } = config;
+    let pg_pool = init_connections(&database_url).await;
+
     // build our application with a single route
     let app = Router::new()
         .route("/healthz", get(service_info))
-        .nest("/api", api::routes());
+        .nest("/api", api::routes())
+        .layer(AddExtensionLayer::new(pg_pool));
 
     // run it with hyper on localhost:3000
-    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+    axum::Server::bind(&"0.0.0.0:1234".parse().unwrap())
         .serve(app.into_make_service())
         .await
         .unwrap();

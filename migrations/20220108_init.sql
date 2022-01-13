@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS account
 (
-    id                SERIAL PRIMARY KEY,
-    username    CHARACTER(64),
-    password    CHARACTER(64)
+    id          SERIAL PRIMARY KEY,
+    username    VARCHAR(64),
+    password    VARCHAR(64)
 );

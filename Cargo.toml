@@ -8,13 +8,15 @@ build = "build.rs"
 
 [dependencies]
 axum = "0.4"
-tokio = { version = "1.15", features = [ "macros",  "rt-multi-thread"] }
-serde = { version = "1", features = ["derive"] }
+tokio = { version = "1.15", features = [ "macros"] }
+serde = { version = "1"  }#, features = ["derive"]
 serde_json = "1.0"
 chrono = "0.4"
 env_logger = "0.9"
 log = "0.4"
-
+sqlx = { version = "0.5", features = ["runtime-tokio-rustls", "postgres", "macros"] }
+tower-http = { version = "0.2", features = ["add-extension"]}
+thiserror = "1"
 
 [build-dependencies]
 vergen = "6"
