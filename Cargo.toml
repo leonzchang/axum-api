@@ -17,6 +17,7 @@ log = "0.4"
 sqlx = { version = "0.5", features = ["runtime-tokio-rustls", "postgres", "macros"] }
 tower-http = { version = "0.2", features = ["add-extension"]}
 thiserror = "1"
+bcrypt = "0.10"
 
 [build-dependencies]
 vergen = "6"

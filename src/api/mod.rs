@@ -1,6 +1,4 @@
-use std::ops::Deref;
-
-use crate::utils::{get_all_account, user_create_account};
+use crate::utils::{get_all_account, user_create_account, verify_login};
 use axum::{
     extract,
     extract::Extension,
@@ -9,9 +7,11 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use bcrypt::{hash, verify, DEFAULT_COST};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::PgPool;
+use std::ops::Deref;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -21,7 +21,7 @@ pub enum Error {
 
 pub fn routes() -> Router {
     let router = Router::new()
-        .route("/create_account", post(create_account))
+        .route("/create_account", post(signup))
         .route("/login", post(login))
         .route("/get_accounts", get(get_accounts));
 
@@ -34,23 +34,53 @@ struct UserData {
     password: String,
 }
 
-// TODO: authentication
-async fn create_account(
+// FIXME: empty input
+async fn signup(
     req: extract::Json<UserData>,
     Extension(pg_pool): Extension<PgPool>,
-) -> Result<response::Json<Value>, (StatusCode, String)> {
+) -> Result<response::Json<Value>, (StatusCode, response::Json<Value>)> {
     let UserData { username, password } = req.deref();
-    let id = user_create_account(&pg_pool, username, password)
+    let hashed_password = &hash(password, DEFAULT_COST).unwrap();
+    log::warn!("create account {:?} {:?}", username, hashed_password);
+    let id = user_create_account(&pg_pool, username, hashed_password)
         .await
-        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+        .map_err(|_| {
+            (
+                StatusCode::UNAUTHORIZED,
+                response::Json(json!({"error": "Another user with this username already exists."})),
+            )
+        })?;
 
-    Ok(response::Json(json!({ "account_id": id })))
+    Ok(response::Json(json!({ "message": id })))
 }
 
-// TODO: authentication, database function
-async fn login(payload: extract::Json<UserData>) {
-    log::warn!("create account {:?}", payload);
+async fn login(
+    req: extract::Json<UserData>,
+    Extension(pg_pool): Extension<PgPool>,
+) -> Result<response::Json<Value>, (StatusCode, response::Json<Value>)> {
+    log::warn!("create account {:?}", req);
     // `POST /` called post api for logging in
+    let UserData { username, password } = req.deref();
+
+    let user_password = verify_login(&pg_pool, username).await.map_err(|_| {
+        (
+            StatusCode::UNAUTHORIZED,
+            response::Json(json!({"error": "Invalid username or password."})),
+            // response::Json(json!({"error": err.to_string()})),
+        )
+    })?;
+
+    let valid = verify(password, &user_password).unwrap();
+    if !valid {
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            response::Json(json!({"error": "Invalid username or password."})),
+        ));
+    };
+
+    Ok(response::Json(json!({
+        "message": format!("Welcome back {} !", username)
+    })))
 }
 
 // For test

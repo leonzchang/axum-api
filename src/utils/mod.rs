@@ -1,4 +1,3 @@
-// To Do database connection
 use sqlx::{postgres::PgPoolOptions, postgres::PgRow, PgPool, Row};
 
 pub async fn init_connections(database_url: &str) -> PgPool {
@@ -43,6 +42,18 @@ pub async fn user_create_account(
     .bind(username)
     .bind(password)
     .map(|row: PgRow| Ok(row.get::<i32, _>(0)))
+    .fetch_one(pg_pool)
+    .await?
+}
+
+pub async fn verify_login(pg_pool: &PgPool, username: &str) -> Result<String, sqlx::Error> {
+    sqlx::query(
+        r#"
+            SELECT password FROM account WHERE username=$1
+        "#,
+    )
+    .bind(username)
+    .map(|row: PgRow| Ok(row.get::<String, _>(0)))
     .fetch_one(pg_pool)
     .await?
 }
