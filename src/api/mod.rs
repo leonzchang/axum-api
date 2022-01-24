@@ -2,7 +2,10 @@ use crate::utils::{get_all_account, user_create_account, verify_login};
 use axum::{
     extract,
     extract::Extension,
-    http::StatusCode,
+    http::{
+        header::{HeaderMap, HeaderValue},
+        StatusCode,
+    },
     response,
     routing::{get, post},
     Router,
@@ -57,7 +60,7 @@ async fn signup(
 async fn login(
     req: extract::Json<UserData>,
     Extension(pg_pool): Extension<PgPool>,
-) -> Result<response::Json<Value>, (StatusCode, response::Json<Value>)> {
+) -> Result<(HeaderMap, response::Json<Value>), (StatusCode, response::Json<Value>)> {
     log::warn!("create account {:?}", req);
     // `POST /` called post api for logging in
     let UserData { username, password } = req.deref();
@@ -78,9 +81,16 @@ async fn login(
         ));
     };
 
-    Ok(response::Json(json!({
-        "message": format!("Welcome back {} !", username)
-    })))
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        axum::http::header::SET_COOKIE,
+        HeaderValue::from_str("mycookie=data").unwrap(),
+    );
+
+    Ok((
+        headers,
+        response::Json(json!({ "message": format!("Welcome back {} !", username) })),
+    ))
 }
 
 // For test
